@@ -18,12 +18,25 @@ const SEGMENT_LENGTH: f32 = 24.0;
 const SEGMENTS_AHEAD: i32 = 8;
 const SEGMENTS_BEHIND: i32 = 2;
 
-const CAR_SPEED_MIN: f32 = 12.0;
-const CAR_SPEED_MAX: f32 = 55.0;
-const CAR_ACCEL: f32 = 18.0;
-const CAR_BRAKE: f32 = 28.0;
+const CAR_SPEED_MIN: f32 = 0.0;
+const CAR_SPEED_MAX: f32 = 285.0;
+const CAR_ACCEL: f32 = 55.0;
+const CAR_BRAKE: f32 = 90.0;
 const CAR_STEER: f32 = 22.0;
 const CAR_HALF_EXTENTS: Vec3 = Vec3::new(1.1, 0.6, 2.2);
+
+/// Speedometer face range.
+const GAUGE_SPEED_MIN: f32 = 0.0;
+const GAUGE_SPEED_MAX: f32 = 285.0;
+/// Tach / accel face range.
+const GAUGE_ACCEL_MIN: f32 = 0.0;
+const GAUGE_ACCEL_MAX: f32 = 8000.0;
+
+const GAUGE_SIZE: f32 = 168.0;
+const GAUGE_NEEDLE_LEN: f32 = 118.0;
+/// Needle sweep: classic car dial from ~7:30 to ~4:30 (clockwise).
+const GAUGE_START_RAD: f32 = 225.0_f32 * (std::f32::consts::PI / 180.0);
+const GAUGE_SWEEP_RAD: f32 = 270.0_f32 * (std::f32::consts::PI / 180.0);
 
 fn main() {
     App::new()
@@ -140,7 +153,7 @@ enum GaugeKind {
 }
 
 #[derive(Component)]
-struct GaugeFill;
+struct GaugeNeedle;
 
 #[derive(Component)]
 struct GaugeValueText;
@@ -261,124 +274,258 @@ fn setup(
 
 fn spawn_gauges(commands: &mut Commands) {
     let panel = commands
+        .spawn(Node {
+            position_type: PositionType::Absolute,
+            right: Val::Px(16.0),
+            bottom: Val::Px(16.0),
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(18.0),
+            align_items: AlignItems::FlexEnd,
+            ..default()
+        })
+        .id();
+
+    let speed = spawn_circular_gauge(
+        commands,
+        "SPEED",
+        "km/h",
+        GaugeKind::Speed,
+        &["0", "50", "100", "150", "200", "250", "285"],
+    );
+    let accel = spawn_circular_gauge(
+        commands,
+        "ACCEL",
+        "x1000",
+        GaugeKind::Accel,
+        &["0", "1", "2", "3", "4", "5", "6", "7", "8"],
+    );
+
+    commands.entity(panel).add_children(&[speed, accel]);
+}
+
+fn spawn_circular_gauge(
+    commands: &mut Commands,
+    title: &str,
+    unit: &str,
+    kind: GaugeKind,
+    ticks: &[&str],
+) -> Entity {
+    let face_size = GAUGE_SIZE - 14.0;
+
+    let root = commands
+        .spawn(Node {
+            width: Val::Px(GAUGE_SIZE + 24.0),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            row_gap: Val::Px(6.0),
+            ..default()
+        })
+        .id();
+
+    // Outer chrome bezel
+    let bezel = commands
+        .spawn((
+            Node {
+                width: Val::Px(GAUGE_SIZE),
+                height: Val::Px(GAUGE_SIZE),
+                border: UiRect::all(Val::Px(6.0)),
+                border_radius: BorderRadius::MAX,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.18, 0.18, 0.2)),
+            BorderColor::all(Color::srgb(0.55, 0.55, 0.58)),
+        ))
+        .id();
+
+    // Dark dial face
+    let face = commands
+        .spawn((
+            Node {
+                width: Val::Px(face_size),
+                height: Val::Px(face_size),
+                border_radius: BorderRadius::MAX,
+                border: UiRect::all(Val::Px(2.0)),
+                overflow: Overflow::clip(),
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.06, 0.07, 0.09)),
+            BorderColor::all(Color::srgb(0.25, 0.26, 0.28)),
+        ))
+        .id();
+
+    // Tick marks around the dial
+    let tick_count = ticks.len().max(2);
+    for (i, label) in ticks.iter().enumerate() {
+        let t = i as f32 / (tick_count - 1) as f32;
+        let angle = GAUGE_START_RAD + t * GAUGE_SWEEP_RAD;
+
+        let tick = commands
+            .spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: Val::Px((face_size - 3.0) * 0.5),
+                    top: Val::Px((face_size - GAUGE_NEEDLE_LEN) * 0.5),
+                    width: Val::Px(3.0),
+                    height: Val::Px(GAUGE_NEEDLE_LEN),
+                    ..default()
+                },
+                BackgroundColor(Color::NONE),
+                UiTransform::from_rotation(Rot2::radians(angle)),
+                children![(
+                    Node {
+                        position_type: PositionType::Absolute,
+                        left: Val::Px(0.0),
+                        top: Val::Px(6.0),
+                        width: Val::Px(3.0),
+                        height: Val::Px(14.0),
+                        ..default()
+                    },
+                    BackgroundColor(if t > 0.85 {
+                        Color::srgb(0.9, 0.2, 0.15)
+                    } else {
+                        Color::srgb(0.9, 0.9, 0.92)
+                    }),
+                )],
+            ))
+            .id();
+        commands.entity(face).add_child(tick);
+
+        // Number labels near ticks
+        if tick_count <= 7 || i % 2 == 0 || i + 1 == tick_count {
+            let radius = face_size * 0.34;
+            // Clockwise-from-up: x = sin(a), y = -cos(a) in UI space (y down).
+            let x = angle.sin() * radius;
+            let y = -angle.cos() * radius;
+            let num = commands
+                .spawn((
+                    Text::new(*label),
+                    TextFont {
+                        font_size: FontSize::Px(11.0),
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.85, 0.86, 0.88)),
+                    Node {
+                        position_type: PositionType::Absolute,
+                        left: Val::Px(face_size * 0.5 + x - 10.0),
+                        top: Val::Px(face_size * 0.5 + y - 8.0),
+                        ..default()
+                    },
+                ))
+                .id();
+            commands.entity(face).add_child(num);
+        }
+    }
+
+    // Needle — rotates about dial center
+    let needle = commands
         .spawn((
             Node {
                 position_type: PositionType::Absolute,
-                right: Val::Px(20.0),
-                bottom: Val::Px(20.0),
-                width: Val::Px(280.0),
-                padding: UiRect::all(Val::Px(14.0)),
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(12.0),
-                border: UiRect::all(Val::Px(1.0)),
-                border_radius: BorderRadius::all(Val::Px(10.0)),
+                left: Val::Px((face_size - 5.0) * 0.5),
+                top: Val::Px((face_size - GAUGE_NEEDLE_LEN) * 0.5),
+                width: Val::Px(5.0),
+                height: Val::Px(GAUGE_NEEDLE_LEN),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.05, 0.06, 0.08, 0.72)),
-            BorderColor::all(Color::srgba(1.0, 1.0, 1.0, 0.15)),
+            BackgroundColor(Color::NONE),
+            UiTransform::from_rotation(Rot2::radians(GAUGE_START_RAD)),
+            GaugeNeedle,
+            kind,
+            children![(
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(1.0),
+                    top: Val::Px(8.0),
+                    width: Val::Px(3.0),
+                    height: Val::Px(GAUGE_NEEDLE_LEN * 0.48),
+                    border_radius: BorderRadius::all(Val::Px(1.0)),
+                    ..default()
+                },
+                BackgroundColor(Color::srgb(0.92, 0.12, 0.12)),
+            )],
         ))
         .id();
+    commands.entity(face).add_child(needle);
 
-    let speed_row = spawn_gauge_row(
-        commands,
-        "SPEED",
-        GaugeKind::Speed,
-        Color::srgb(0.15, 0.75, 0.95),
-    );
-    let accel_row = spawn_gauge_row(
-        commands,
-        "ACCEL",
-        GaugeKind::Accel,
-        Color::srgb(0.95, 0.7, 0.15),
-    );
-
-    commands.entity(panel).add_children(&[speed_row, accel_row]);
-}
-
-fn spawn_gauge_row(
-    commands: &mut Commands,
-    label: &str,
-    kind: GaugeKind,
-    fill_color: Color,
-) -> Entity {
-    let row = commands
-        .spawn(Node {
-            width: Val::Percent(100.0),
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(4.0),
-            ..default()
-        })
-        .id();
-
-    let header = commands
-        .spawn(Node {
-            width: Val::Percent(100.0),
-            flex_direction: FlexDirection::Row,
-            justify_content: JustifyContent::SpaceBetween,
-            align_items: AlignItems::Center,
-            ..default()
-        })
-        .id();
-
-    let label_text = commands
+    // Center hub
+    let hub = commands
         .spawn((
-            Text::new(label),
-            TextFont {
-                font_size: FontSize::Px(14.0),
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px((face_size - 16.0) * 0.5),
+                top: Val::Px((face_size - 16.0) * 0.5),
+                width: Val::Px(16.0),
+                height: Val::Px(16.0),
+                border_radius: BorderRadius::MAX,
+                border: UiRect::all(Val::Px(2.0)),
                 ..default()
             },
-            TextColor(Color::srgb(0.85, 0.88, 0.92)),
+            BackgroundColor(Color::srgb(0.75, 0.75, 0.78)),
+            BorderColor::all(Color::srgb(0.35, 0.35, 0.38)),
         ))
         .id();
+    commands.entity(face).add_child(hub);
 
-    let value_text = commands
+    // Digital readout in lower face
+    let readout = commands
         .spawn((
             Text::new("0"),
             TextFont {
-                font_size: FontSize::Px(16.0),
+                font_size: FontSize::Px(18.0),
                 ..default()
             },
-            TextColor(Color::srgb(1.0, 1.0, 1.0)),
+            TextColor(Color::srgb(0.95, 0.95, 0.7)),
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(face_size * 0.5 - 28.0),
+                bottom: Val::Px(28.0),
+                width: Val::Px(56.0),
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
             GaugeValueText,
             kind,
         ))
         .id();
+    commands.entity(face).add_child(readout);
 
-    commands
-        .entity(header)
-        .add_children(&[label_text, value_text]);
-
-    let track = commands
+    let unit_text = commands
         .spawn((
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Px(18.0),
-                padding: UiRect::all(Val::Px(2.0)),
-                overflow: Overflow::clip(),
-                border_radius: BorderRadius::all(Val::Px(4.0)),
+            Text::new(unit),
+            TextFont {
+                font_size: FontSize::Px(10.0),
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.12, 0.14, 0.18)),
+            TextColor(Color::srgb(0.55, 0.58, 0.6)),
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(face_size * 0.5 - 24.0),
+                bottom: Val::Px(14.0),
+                width: Val::Px(48.0),
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+        ))
+        .id();
+    commands.entity(face).add_child(unit_text);
+
+    commands.entity(bezel).add_child(face);
+
+    let title_text = commands
+        .spawn((
+            Text::new(title),
+            TextFont {
+                font_size: FontSize::Px(13.0),
+                ..default()
+            },
+            TextColor(Color::srgb(0.9, 0.9, 0.92)),
         ))
         .id();
 
-    let fill = commands
-        .spawn((
-            Node {
-                width: Val::Percent(0.0),
-                height: Val::Percent(100.0),
-                border_radius: BorderRadius::all(Val::Px(3.0)),
-                ..default()
-            },
-            BackgroundColor(fill_color),
-            GaugeFill,
-            kind,
-        ))
-        .id();
-
-    commands.entity(track).add_child(fill);
-    commands.entity(row).add_children(&[header, track]);
-    row
+    commands.entity(root).add_children(&[bezel, title_text]);
+    root
 }
 
 fn spawn_car(
@@ -570,11 +717,12 @@ fn drive_car(
     if keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp) {
         car.speed = (car.speed + CAR_ACCEL * dt).min(CAR_SPEED_MAX);
     } else if keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown) {
-        car.speed = (car.speed - CAR_BRAKE * dt).max(CAR_SPEED_MIN * 0.35);
+        car.speed = (car.speed - CAR_BRAKE * dt).max(CAR_SPEED_MIN);
     } else {
-        // Gentle coast toward cruise speed
-        let cruise = (CAR_SPEED_MIN + CAR_SPEED_MAX) * 0.45;
-        car.speed += (cruise - car.speed) * 0.4 * dt;
+        // Gentle coast toward a mid cruise speed
+        let cruise = CAR_SPEED_MAX * 0.35;
+        car.speed += (cruise - car.speed) * 0.35 * dt;
+        car.speed = car.speed.max(CAR_SPEED_MIN);
     }
 
     car.acceleration = if dt > f32::EPSILON {
@@ -796,60 +944,39 @@ fn update_hud(
 
 fn update_gauges(
     car_query: Query<&Car>,
-    mut fills: Query<(&GaugeKind, &mut Node, &mut BackgroundColor), With<GaugeFill>>,
+    mut needles: Query<(&GaugeKind, &mut UiTransform), With<GaugeNeedle>>,
     mut values: Query<(&GaugeKind, &mut Text), With<GaugeValueText>>,
 ) {
     let Ok(car) = car_query.single() else {
         return;
     };
 
-    let speed_pct = ((car.speed / CAR_SPEED_MAX) * 100.0).clamp(0.0, 100.0);
-    // Map accel from [-CAR_BRAKE, CAR_ACCEL] into 0..100 for the bar
-    let accel_range = CAR_BRAKE + CAR_ACCEL;
-    let accel_pct = (((car.acceleration + CAR_BRAKE) / accel_range) * 100.0).clamp(0.0, 100.0);
+    let speed_value = car.speed.clamp(GAUGE_SPEED_MIN, GAUGE_SPEED_MAX);
+    // Accel dial: map positive acceleration into 0..8000 (tach-style).
+    let accel_t = (car.acceleration.max(0.0) / CAR_ACCEL).clamp(0.0, 1.0);
+    let accel_value = GAUGE_ACCEL_MIN + accel_t * (GAUGE_ACCEL_MAX - GAUGE_ACCEL_MIN);
 
-    for (kind, mut node, mut bg) in &mut fills {
-        match *kind {
+    for (kind, mut transform) in &mut needles {
+        let t = match *kind {
             GaugeKind::Speed => {
-                node.width = Val::Percent(speed_pct);
-                *bg = BackgroundColor(speed_color(speed_pct));
+                (speed_value - GAUGE_SPEED_MIN) / (GAUGE_SPEED_MAX - GAUGE_SPEED_MIN)
             }
             GaugeKind::Accel => {
-                node.width = Val::Percent(accel_pct);
-                *bg = BackgroundColor(accel_color(car.acceleration));
+                (accel_value - GAUGE_ACCEL_MIN) / (GAUGE_ACCEL_MAX - GAUGE_ACCEL_MIN)
             }
-        }
+        };
+        transform.rotation = Rot2::radians(GAUGE_START_RAD + t.clamp(0.0, 1.0) * GAUGE_SWEEP_RAD);
     }
 
     for (kind, mut text) in &mut values {
         match *kind {
             GaugeKind::Speed => {
-                **text = format!("{:.0}", car.speed);
+                **text = format!("{:.0}", speed_value);
             }
             GaugeKind::Accel => {
-                **text = format!("{:+.1}", car.acceleration);
+                **text = format!("{:.0}", accel_value);
             }
         }
-    }
-}
-
-fn speed_color(pct: f32) -> Color {
-    if pct < 40.0 {
-        Color::srgb(0.2, 0.85, 0.45)
-    } else if pct < 75.0 {
-        Color::srgb(0.15, 0.75, 0.95)
-    } else {
-        Color::srgb(0.95, 0.35, 0.2)
-    }
-}
-
-fn accel_color(accel: f32) -> Color {
-    if accel > 2.0 {
-        Color::srgb(0.25, 0.9, 0.35)
-    } else if accel < -2.0 {
-        Color::srgb(0.95, 0.3, 0.2)
-    } else {
-        Color::srgb(0.95, 0.7, 0.15)
     }
 }
 
