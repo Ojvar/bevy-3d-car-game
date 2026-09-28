@@ -48,6 +48,7 @@ pub fn restart_on_crash(
     if let Ok(mut car) = car_speed.single_mut() {
         car.speed = CAR_SPEED_MIN;
         car.acceleration = 0.0;
+        // Keep lights_on as the player left it.
     }
 }
 

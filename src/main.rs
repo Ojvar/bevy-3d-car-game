@@ -6,6 +6,7 @@
 //!   D / Right — steer right
 //!   W / Up    — accelerate
 //!   S / Down  — brake
+//!   L         — toggle headlights
 //!   R         — restart after crash
 //!   Esc       — quit
 

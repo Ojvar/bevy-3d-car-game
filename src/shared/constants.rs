@@ -19,6 +19,12 @@ pub const CAR_STEER: f32 = 22.0;
 pub const KMH_TO_WORLD: f32 = 1.0 / 3.6;
 pub const CAR_HALF_EXTENTS: Vec3 = Vec3::new(1.1, 0.6, 2.2);
 
+// --- Headlights ---
+pub const HEADLIGHT_INTENSITY: f32 = 2_500_000.0;
+pub const HEADLIGHT_RANGE: f32 = 55.0;
+pub const HEADLIGHT_INNER_ANGLE: f32 = 0.22;
+pub const HEADLIGHT_OUTER_ANGLE: f32 = 0.48;
+
 // --- Gauge faces ---
 pub const GAUGE_SPEED_MIN: f32 = 0.0;
 pub const GAUGE_SPEED_MAX: f32 = 285.0;

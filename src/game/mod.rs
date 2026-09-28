@@ -32,7 +32,10 @@ impl Plugin for GamePlugin {
                 (GameSet::Drive, GameSet::World, GameSet::Ui).chain(),
             )
             .add_systems(Startup, setup::setup)
-            .add_systems(Update, car::drive_car.in_set(GameSet::Drive))
+            .add_systems(
+                Update,
+                (car::drive_car, car::toggle_car_lights).in_set(GameSet::Drive),
+            )
             .add_systems(
                 Update,
                 (

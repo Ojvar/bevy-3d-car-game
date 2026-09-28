@@ -7,7 +7,17 @@ pub struct Car {
     pub speed: f32,
     /// Instantaneous acceleration (km/h per second). Positive = accel, negative = brake.
     pub acceleration: f32,
+    /// Player-toggled headlights (useful at night).
+    pub lights_on: bool,
 }
+
+/// Spot light beam child of the car.
+#[derive(Component)]
+pub struct CarHeadlight;
+
+/// Glowing headlight lens mesh on the bumper.
+#[derive(Component)]
+pub struct CarHeadlightLens;
 
 #[derive(Component)]
 pub struct FollowCamera;

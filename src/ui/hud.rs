@@ -2,13 +2,13 @@
 
 use bevy::prelude::*;
 
-use crate::shared::components::HudText;
+use crate::shared::components::{Car, HudText};
 use crate::shared::resources::GameState;
 
 pub fn spawn_hud(commands: &mut Commands) {
     commands.spawn((
         Text::new(
-            "Bevy Car Rider\nA/D steer  W accelerate  S brake  R restart\nScore: 0",
+            "Bevy Car Rider\nA/D steer  W accel  S brake  L lights  R restart\nScore: 0  Lights: OFF",
         ),
         TextFont {
             font_size: FontSize::Px(22.0),
@@ -25,20 +25,28 @@ pub fn spawn_hud(commands: &mut Commands) {
     ));
 }
 
-pub fn update_hud(state: Res<GameState>, mut hud: Query<&mut Text, With<HudText>>) {
+pub fn update_hud(
+    state: Res<GameState>,
+    car_query: Query<&Car>,
+    mut hud: Query<&mut Text, With<HudText>>,
+) {
     let Ok(mut text) = hud.single_mut() else {
         return;
     };
+    let lights = car_query
+        .single()
+        .map(|car| if car.lights_on { "ON" } else { "OFF" })
+        .unwrap_or("OFF");
 
     if state.crashed {
         **text = format!(
-            "CRASHED!  Score: {:.0}\nPress R to restart\nA/D steer  W accelerate  S brake",
+            "CRASHED!  Score: {:.0}\nPress R to restart\nA/D steer  W accel  S brake  L lights",
             state.score
         );
     } else {
         **text = format!(
-            "Bevy Car Rider\nA/D steer  W accelerate  S brake  R restart\nScore: {:.0}",
-            state.score
+            "Bevy Car Rider\nA/D steer  W accel  S brake  L lights  R restart\nScore: {:.0}  Lights: {}",
+            state.score, lights
         );
     }
 }
