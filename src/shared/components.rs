@@ -7,8 +7,34 @@ pub struct Car {
     pub speed: f32,
     /// Instantaneous acceleration (km/h per second). Positive = accel, negative = brake.
     pub acceleration: f32,
-    /// Player-toggled headlights (useful at night).
-    pub lights_on: bool,
+    pub lights: HeadlightMode,
+}
+
+/// Off → short (low beam) → long (high beam).
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+pub enum HeadlightMode {
+    #[default]
+    Off,
+    Short,
+    Long,
+}
+
+impl HeadlightMode {
+    pub fn next(self) -> Self {
+        match self {
+            Self::Off => Self::Short,
+            Self::Short => Self::Long,
+            Self::Long => Self::Off,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Off => "OFF",
+            Self::Short => "SHORT",
+            Self::Long => "LONG",
+        }
+    }
 }
 
 /// Spot light beam child of the car.

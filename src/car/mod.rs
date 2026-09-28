@@ -2,10 +2,13 @@
 
 use bevy::prelude::*;
 
-use crate::shared::components::{Car, CarHeadlight, CarHeadlightLens};
+use crate::shared::components::{Car, CarHeadlight, CarHeadlightLens, HeadlightMode};
 use crate::shared::constants::{
-    CAR_ACCEL, CAR_BRAKE, CAR_SPEED_MAX, CAR_SPEED_MIN, CAR_STEER, HEADLIGHT_INNER_ANGLE,
-    HEADLIGHT_INTENSITY, HEADLIGHT_OUTER_ANGLE, HEADLIGHT_RANGE, KMH_TO_WORLD, ROAD_HALF_WIDTH,
+    CAR_ACCEL, CAR_BRAKE, CAR_SPEED_MAX, CAR_SPEED_MIN, CAR_STEER, HEADLIGHT_LONG_AIM_Y,
+    HEADLIGHT_LONG_AIM_Z, HEADLIGHT_LONG_INNER, HEADLIGHT_LONG_INTENSITY, HEADLIGHT_LONG_OUTER,
+    HEADLIGHT_LONG_RANGE, HEADLIGHT_SHORT_AIM_Y, HEADLIGHT_SHORT_AIM_Z, HEADLIGHT_SHORT_INNER,
+    HEADLIGHT_SHORT_INTENSITY, HEADLIGHT_SHORT_OUTER, HEADLIGHT_SHORT_RANGE, KMH_TO_WORLD,
+    ROAD_HALF_WIDTH,
 };
 use crate::shared::resources::GameState;
 
@@ -58,7 +61,7 @@ pub fn spawn_car(
             Car {
                 speed: CAR_SPEED_MIN,
                 acceleration: 0.0,
-                lights_on: false,
+                lights: HeadlightMode::Off,
             },
             Transform::from_xyz(0.0, 0.55, 0.0),
             Visibility::default(),
@@ -108,21 +111,24 @@ pub fn spawn_car(
         .id();
 
     for x in [-0.7_f32, 0.7] {
+        let origin = Vec3::new(x, 0.2, 2.15);
         let beam = commands
             .spawn((
                 CarHeadlight,
                 SpotLight {
                     color: Color::srgb(1.0, 0.96, 0.85),
                     intensity: 0.0,
-                    range: HEADLIGHT_RANGE,
+                    range: HEADLIGHT_SHORT_RANGE,
                     radius: 0.15,
-                    inner_angle: HEADLIGHT_INNER_ANGLE,
-                    outer_angle: HEADLIGHT_OUTER_ANGLE,
+                    inner_angle: HEADLIGHT_SHORT_INNER,
+                    outer_angle: HEADLIGHT_SHORT_OUTER,
                     shadow_maps_enabled: false,
                     ..default()
                 },
-                // Aim down the road (+Z) and slightly toward the asphalt.
-                Transform::from_xyz(x, 0.2, 2.15).looking_at(Vec3::new(x * 0.35, -1.2, 28.0), Vec3::Y),
+                Transform::from_translation(origin).looking_at(
+                    Vec3::new(x * 0.35, HEADLIGHT_SHORT_AIM_Y, HEADLIGHT_SHORT_AIM_Z),
+                    Vec3::Y,
+                ),
             ))
             .id();
 
@@ -142,7 +148,7 @@ pub fn spawn_car(
 pub fn toggle_car_lights(
     keys: Res<ButtonInput<KeyCode>>,
     mut car_query: Query<&mut Car>,
-    mut beams: Query<&mut SpotLight, With<CarHeadlight>>,
+    mut beams: Query<(&mut SpotLight, &mut Transform), With<CarHeadlight>>,
     lenses: Query<&MeshMaterial3d<StandardMaterial>, With<CarHeadlightLens>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -154,22 +160,61 @@ pub fn toggle_car_lights(
         return;
     };
 
-    car.lights_on = !car.lights_on;
-    let intensity = if car.lights_on {
-        HEADLIGHT_INTENSITY
-    } else {
-        0.0
-    };
-    let emissive = if car.lights_on {
-        LinearRgba::rgb(12.0, 11.0, 7.0)
-    } else {
-        LinearRgba::BLACK
+    car.lights = car.lights.next();
+    apply_headlight_mode(car.lights, &mut beams, &lenses, &mut materials);
+}
+
+fn apply_headlight_mode(
+    mode: HeadlightMode,
+    beams: &mut Query<(&mut SpotLight, &mut Transform), With<CarHeadlight>>,
+    lenses: &Query<&MeshMaterial3d<StandardMaterial>, With<CarHeadlightLens>>,
+    materials: &mut Assets<StandardMaterial>,
+) {
+    let (intensity, range, inner, outer, aim_y, aim_z, emissive) = match mode {
+        HeadlightMode::Off => (
+            0.0,
+            HEADLIGHT_SHORT_RANGE,
+            HEADLIGHT_SHORT_INNER,
+            HEADLIGHT_SHORT_OUTER,
+            HEADLIGHT_SHORT_AIM_Y,
+            HEADLIGHT_SHORT_AIM_Z,
+            LinearRgba::BLACK,
+        ),
+        HeadlightMode::Short => (
+            HEADLIGHT_SHORT_INTENSITY,
+            HEADLIGHT_SHORT_RANGE,
+            HEADLIGHT_SHORT_INNER,
+            HEADLIGHT_SHORT_OUTER,
+            HEADLIGHT_SHORT_AIM_Y,
+            HEADLIGHT_SHORT_AIM_Z,
+            LinearRgba::rgb(8.0, 7.5, 5.0),
+        ),
+        HeadlightMode::Long => (
+            HEADLIGHT_LONG_INTENSITY,
+            HEADLIGHT_LONG_RANGE,
+            HEADLIGHT_LONG_INNER,
+            HEADLIGHT_LONG_OUTER,
+            HEADLIGHT_LONG_AIM_Y,
+            HEADLIGHT_LONG_AIM_Z,
+            LinearRgba::rgb(16.0, 14.5, 9.0),
+        ),
     };
 
-    for mut light in &mut beams {
+    for (mut light, mut transform) in beams.iter_mut() {
         light.intensity = intensity;
+        light.range = range;
+        light.inner_angle = inner;
+        light.outer_angle = outer;
+
+        let x = transform.translation.x;
+        let origin = transform.translation;
+        *transform = Transform::from_translation(origin).looking_at(
+            Vec3::new(x * 0.35, aim_y, aim_z),
+            Vec3::Y,
+        );
     }
-    for mat_handle in &lenses {
+
+    for mat_handle in lenses.iter() {
         if let Some(mut mat) = materials.get_mut(&mat_handle.0) {
             mat.emissive = emissive;
         }

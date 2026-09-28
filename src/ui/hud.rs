@@ -35,7 +35,7 @@ pub fn update_hud(
     };
     let lights = car_query
         .single()
-        .map(|car| if car.lights_on { "ON" } else { "OFF" })
+        .map(|car| car.lights.label())
         .unwrap_or("OFF");
 
     if state.crashed {

@@ -38,7 +38,8 @@ pub fn setup(
         }),
         stripe: materials.add(StandardMaterial {
             base_color: Color::srgb(0.95, 0.9, 0.2),
-            unlit: true,
+            // Lit so paint darkens at night and catches headlight beams.
+            perceptual_roughness: 0.85,
             ..default()
         }),
         grass: materials.add(StandardMaterial {

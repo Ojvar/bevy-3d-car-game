@@ -19,11 +19,20 @@ pub const CAR_STEER: f32 = 22.0;
 pub const KMH_TO_WORLD: f32 = 1.0 / 3.6;
 pub const CAR_HALF_EXTENTS: Vec3 = Vec3::new(1.1, 0.6, 2.2);
 
-// --- Headlights ---
-pub const HEADLIGHT_INTENSITY: f32 = 2_500_000.0;
-pub const HEADLIGHT_RANGE: f32 = 55.0;
-pub const HEADLIGHT_INNER_ANGLE: f32 = 0.22;
-pub const HEADLIGHT_OUTER_ANGLE: f32 = 0.48;
+// --- Headlights (short = low beam, long = high beam) ---
+pub const HEADLIGHT_SHORT_INTENSITY: f32 = 1_800_000.0;
+pub const HEADLIGHT_SHORT_RANGE: f32 = 35.0;
+pub const HEADLIGHT_SHORT_INNER: f32 = 0.28;
+pub const HEADLIGHT_SHORT_OUTER: f32 = 0.55;
+pub const HEADLIGHT_SHORT_AIM_Y: f32 = -2.2;
+pub const HEADLIGHT_SHORT_AIM_Z: f32 = 18.0;
+
+pub const HEADLIGHT_LONG_INTENSITY: f32 = 4_200_000.0;
+pub const HEADLIGHT_LONG_RANGE: f32 = 85.0;
+pub const HEADLIGHT_LONG_INNER: f32 = 0.12;
+pub const HEADLIGHT_LONG_OUTER: f32 = 0.32;
+pub const HEADLIGHT_LONG_AIM_Y: f32 = -0.35;
+pub const HEADLIGHT_LONG_AIM_Z: f32 = 48.0;
 
 // --- Gauge faces ---
 pub const GAUGE_SPEED_MIN: f32 = 0.0;
