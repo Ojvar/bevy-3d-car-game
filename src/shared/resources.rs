@@ -59,4 +59,33 @@ pub struct SharedMaterials {
     pub crate_mat: Handle<StandardMaterial>,
     pub bark: Handle<StandardMaterial>,
     pub foliage: Handle<StandardMaterial>,
+    pub land: Handle<StandardMaterial>,
+    pub sky: Handle<StandardMaterial>,
+    pub hill: Handle<StandardMaterial>,
+}
+
+/// Advances through a full day/night loop every [`crate::shared::constants::DAY_NIGHT_PERIOD_SECS`].
+#[derive(Resource)]
+pub struct DayNightCycle {
+    /// Normalized time of day in `[0, 1)`. `0` = dawn, `0.25` = noon, `0.5` = dusk, `0.75` = midnight.
+    pub time_of_day: f32,
+    pub period_secs: f32,
+}
+
+impl Default for DayNightCycle {
+    fn default() -> Self {
+        Self {
+            time_of_day: 0.2, // start mid-morning
+            period_secs: crate::shared::constants::DAY_NIGHT_PERIOD_SECS,
+        }
+    }
+}
+
+impl DayNightCycle {
+    /// `1` at noon, `0` at midnight — smooth day factor.
+    pub fn day_factor(&self) -> f32 {
+        let sun_altitude = (self.time_of_day * std::f32::consts::TAU - std::f32::consts::FRAC_PI_2)
+            .sin();
+        sun_altitude.clamp(0.0, 1.0)
+    }
 }

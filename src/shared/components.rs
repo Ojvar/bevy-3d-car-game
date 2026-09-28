@@ -36,3 +36,26 @@ pub struct GaugeValueText;
 
 #[derive(Component)]
 pub struct HudText;
+
+/// Primary sun directional light for the day/night cycle.
+#[derive(Component)]
+pub struct Sun;
+
+/// Dim moonlight used during night.
+#[derive(Component)]
+pub struct Moon;
+
+/// Large sky dome that follows the camera.
+#[derive(Component)]
+pub struct SkyDome;
+
+/// Rolling ground plane that follows the car.
+#[derive(Component)]
+pub struct GroundFollow;
+
+/// Distant hills that scroll with the car along the road.
+#[derive(Component)]
+pub struct Hill {
+    pub lateral_x: f32,
+    pub z_offset: f32,
+}

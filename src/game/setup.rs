@@ -1,5 +1,6 @@
 //! Startup: scene, assets, car, road, lights, and UI.
 
+use bevy::pbr::{DistanceFog, FogFalloff};
 use bevy::prelude::*;
 
 use crate::car;
@@ -9,7 +10,7 @@ use crate::shared::constants::{
 };
 use crate::shared::resources::{RoadTracker, SharedMaterials, SharedMeshes};
 use crate::ui::{gauges, hud};
-use crate::world::road;
+use crate::world::{environment, road};
 
 pub fn setup(
     mut commands: Commands,
@@ -17,6 +18,8 @@ pub fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut road_tracker: ResMut<RoadTracker>,
 ) {
+    let (land, sky, hill) = environment::create_environment_materials(&mut materials);
+
     let shared_meshes = SharedMeshes {
         road: meshes.add(Cuboid::new(ROAD_HALF_WIDTH * 2.0, 0.15, SEGMENT_LENGTH)),
         stripe: meshes.add(Cuboid::new(0.25, 0.02, 3.0)),
@@ -59,6 +62,9 @@ pub fn setup(
             base_color: Color::srgb(0.15, 0.45, 0.18),
             ..default()
         }),
+        land,
+        sky,
+        hill,
     };
 
     for i in -SEGMENTS_BEHIND..SEGMENTS_AHEAD {
@@ -69,19 +75,27 @@ pub fn setup(
 
     car::spawn_car(&mut commands, &mut meshes, &mut materials);
 
+    environment::spawn_environment(
+        &mut commands,
+        &mut meshes,
+        shared_materials.land.clone(),
+        shared_materials.sky.clone(),
+        shared_materials.hill.clone(),
+    );
+
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(0.0, 8.0, -12.0).looking_at(Vec3::new(0.0, 0.5, 8.0), Vec3::Y),
         FollowCamera,
-    ));
-
-    commands.spawn((
-        DirectionalLight {
-            illuminance: 12_000.0,
-            shadow_maps_enabled: true,
+        DistanceFog {
+            color: Color::srgb(0.45, 0.72, 0.95),
+            directional_light_color: Color::srgb(1.0, 0.95, 0.85),
+            falloff: FogFalloff::Linear {
+                start: 100.0,
+                end: 320.0,
+            },
             ..default()
         },
-        Transform::from_xyz(20.0, 40.0, -10.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 
     hud::spawn_hud(&mut commands);

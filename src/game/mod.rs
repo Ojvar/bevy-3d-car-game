@@ -7,9 +7,9 @@ use bevy::prelude::*;
 
 use crate::camera;
 use crate::car;
-use crate::shared::resources::{GameState, ObstacleSpawner, RoadTracker};
+use crate::shared::resources::{DayNightCycle, GameState, ObstacleSpawner, RoadTracker};
 use crate::ui::{gauges, hud};
-use crate::world::{obstacles, road};
+use crate::world::{environment, obstacles, road};
 
 /// Orders gameplay systems so driving runs before world / UI updates.
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
@@ -26,6 +26,7 @@ impl Plugin for GamePlugin {
         app.init_resource::<GameState>()
             .init_resource::<RoadTracker>()
             .init_resource::<ObstacleSpawner>()
+            .init_resource::<DayNightCycle>()
             .configure_sets(
                 Update,
                 (GameSet::Drive, GameSet::World, GameSet::Ui).chain(),
@@ -36,6 +37,8 @@ impl Plugin for GamePlugin {
                 Update,
                 (
                     camera::follow_camera,
+                    environment::update_day_night,
+                    environment::follow_environment.after(camera::follow_camera),
                     road::maintain_infinite_road,
                     obstacles::spawn_obstacles,
                     obstacles::check_collisions,
