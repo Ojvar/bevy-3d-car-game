@@ -5,7 +5,7 @@ use bevy::prelude::*;
 #[derive(Component)]
 pub struct Car {
     pub speed: f32,
-    /// Instantaneous acceleration (units/s²). Positive = accel, negative = brake.
+    /// Instantaneous acceleration (km/h per second). Positive = accel, negative = brake.
     pub acceleration: f32,
 }
 

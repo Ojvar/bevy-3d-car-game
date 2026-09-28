@@ -7,6 +7,9 @@ use crate::shared::components::{Car, Obstacle};
 use crate::shared::constants::{CAR_HALF_EXTENTS, LANE_POSITIONS};
 use crate::shared::resources::{GameState, ObstacleSpawner, SharedMaterials, SharedMeshes};
 
+const SPAWN_AHEAD: f32 = 120.0;
+const DESPAWN_BEHIND: f32 = 40.0;
+
 pub fn spawn_obstacles(
     mut commands: Commands,
     car_query: Query<&Transform, With<Car>>,
@@ -25,7 +28,9 @@ pub fn spawn_obstacles(
 
     let mut rng = rand::rng();
 
-    while spawner.next_spawn_z < car.translation.z + 120.0 {
+    // Cap work per frame so hitching cannot snowball when catching up.
+    let mut spawned = 0;
+    while spawner.next_spawn_z < car.translation.z + SPAWN_AHEAD && spawned < 4 {
         let lane = LANE_POSITIONS[rng.random_range(0..LANE_POSITIONS.len())];
         let z = spawner.next_spawn_z;
 
@@ -61,16 +66,35 @@ pub fn spawn_obstacles(
             }
         }
 
-        let gap = rng.random_range(18.0..38.0) * (1.0 - (state.score * 0.00015).min(0.35));
+        // Density ramps with distance; floor keeps the live set bounded.
+        let gap = rng.random_range(18.0..38.0) * (1.0 - (state.distance * 0.00015).min(0.35));
         spawner.next_spawn_z += gap.max(12.0);
+        spawned += 1;
+    }
+}
+
+/// Removes obstacles the car has already passed — always runs, even after a crash.
+pub fn despawn_passed_obstacles(
+    mut commands: Commands,
+    car_query: Query<&Transform, With<Car>>,
+    obstacles: Query<(Entity, &Transform), With<Obstacle>>,
+) {
+    let Ok(car) = car_query.single() else {
+        return;
+    };
+
+    let cutoff = car.translation.z - DESPAWN_BEHIND;
+    for (entity, transform) in &obstacles {
+        if transform.translation.z < cutoff {
+            commands.entity(entity).despawn();
+        }
     }
 }
 
 pub fn check_collisions(
-    mut commands: Commands,
     mut state: ResMut<GameState>,
     car_query: Query<&Transform, With<Car>>,
-    obstacles: Query<(Entity, &Transform, &Obstacle)>,
+    obstacles: Query<(&Transform, &Obstacle)>,
 ) {
     if state.crashed {
         return;
@@ -83,12 +107,7 @@ pub fn check_collisions(
     let car_min = car.translation - CAR_HALF_EXTENTS;
     let car_max = car.translation + CAR_HALF_EXTENTS;
 
-    for (entity, transform, obstacle) in &obstacles {
-        if transform.translation.z < car.translation.z - 30.0 {
-            commands.entity(entity).despawn();
-            continue;
-        }
-
+    for (transform, obstacle) in &obstacles {
         let obs_min = transform.translation - obstacle.half_extents;
         let obs_max = transform.translation + obstacle.half_extents;
 

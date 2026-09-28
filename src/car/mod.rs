@@ -4,7 +4,8 @@ use bevy::prelude::*;
 
 use crate::shared::components::Car;
 use crate::shared::constants::{
-    CAR_ACCEL, CAR_BRAKE, CAR_SPEED_MAX, CAR_SPEED_MIN, CAR_STEER, ROAD_HALF_WIDTH,
+    CAR_ACCEL, CAR_BRAKE, CAR_SPEED_MAX, CAR_SPEED_MIN, CAR_STEER, KMH_TO_WORLD,
+    ROAD_HALF_WIDTH,
 };
 use crate::shared::resources::GameState;
 
@@ -118,10 +119,11 @@ pub fn drive_car(
     if keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp) {
         car.speed = (car.speed + CAR_ACCEL * dt).min(CAR_SPEED_MAX);
     } else if keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown) {
-        car.speed = (car.speed - CAR_BRAKE * dt).max(CAR_SPEED_MIN);
+        car.speed = (car.speed - CAR_BRAKE * dt).max(CAR_SPEED_MIN * 0.35);
     } else {
-        let cruise = CAR_SPEED_MAX * 0.35;
-        car.speed += (cruise - car.speed) * 0.35 * dt;
+        // Coast toward a mid cruise speed (km/h).
+        let cruise = (CAR_SPEED_MIN + CAR_SPEED_MAX) * 0.45;
+        car.speed += (cruise - car.speed) * 0.4 * dt;
         car.speed = car.speed.max(CAR_SPEED_MIN);
     }
 
@@ -139,7 +141,9 @@ pub fn drive_car(
         steer += 1.0;
     }
 
-    transform.translation.x += steer * CAR_STEER * dt;
+    // Lateral steer scales lightly with forward speed so high km/h still feels controllable.
+    let steer_scale = (car.speed * KMH_TO_WORLD / 30.0).clamp(0.55, 1.35);
+    transform.translation.x += steer * CAR_STEER * steer_scale * dt;
     transform.translation.x = transform
         .translation
         .x
@@ -154,7 +158,8 @@ pub fn drive_car(
         roll + (target_roll - roll) * 8.0 * dt,
     );
 
-    transform.translation.z += car.speed * dt;
-    state.distance += car.speed * dt;
+    let world_speed = car.speed * KMH_TO_WORLD;
+    transform.translation.z += world_speed * dt;
+    state.distance += world_speed * dt;
     state.score = state.distance;
 }

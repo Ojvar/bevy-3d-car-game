@@ -41,6 +41,7 @@ impl Plugin for GamePlugin {
                     environment::follow_environment.after(camera::follow_camera),
                     road::maintain_infinite_road,
                     obstacles::spawn_obstacles,
+                    obstacles::despawn_passed_obstacles,
                     obstacles::check_collisions,
                     input::restart_on_crash,
                     input::quit_on_escape,

@@ -43,7 +43,8 @@ pub fn spawn_environment(
         DirectionalLight {
             color: Color::srgb(1.0, 0.95, 0.85),
             illuminance: lux::AMBIENT_DAYLIGHT,
-            shadow_maps_enabled: true,
+            // Moving sun + infinite props makes per-frame shadow maps too expensive.
+            shadow_maps_enabled: false,
             ..default()
         },
         Transform::from_xyz(40.0, 80.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -88,7 +89,7 @@ pub fn spawn_environment(
 
     let sky_mesh = Sphere::new(SKY_DOME_RADIUS)
         .mesh()
-        .ico(4)
+        .ico(3)
         .expect("sky icosphere");
     commands.spawn((
         SkyDome,
@@ -122,9 +123,23 @@ pub fn update_day_night(
     let sky = sky_color(t, day);
     clear_color.0 = sky;
 
+    // Avoid Assets::get_mut every frame — it marks the material changed and reuploads.
     if let Ok(mat_handle) = sky_query.single() {
-        if let Some(mut mat) = materials.get_mut(&mat_handle.0) {
-            mat.base_color = sky;
+        let needs_update = materials
+            .get(&mat_handle.0)
+            .map(|mat| {
+                let prev = mat.base_color.to_srgba();
+                let next = sky.to_srgba();
+                (prev.red - next.red).abs()
+                    + (prev.green - next.green).abs()
+                    + (prev.blue - next.blue).abs()
+                    > 0.02
+            })
+            .unwrap_or(false);
+        if needs_update {
+            if let Some(mut mat) = materials.get_mut(&mat_handle.0) {
+                mat.base_color = sky;
+            }
         }
     }
 

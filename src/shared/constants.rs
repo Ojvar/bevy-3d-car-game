@@ -9,12 +9,14 @@ pub const SEGMENT_LENGTH: f32 = 24.0;
 pub const SEGMENTS_AHEAD: i32 = 8;
 pub const SEGMENTS_BEHIND: i32 = 2;
 
-// --- Car physics ---
-pub const CAR_SPEED_MIN: f32 = 0.0;
+// --- Car physics (speed values are km/h; convert with KMH_TO_WORLD for movement) ---
+pub const CAR_SPEED_MIN: f32 = 40.0;
 pub const CAR_SPEED_MAX: f32 = 285.0;
 pub const CAR_ACCEL: f32 = 55.0;
 pub const CAR_BRAKE: f32 = 90.0;
 pub const CAR_STEER: f32 = 22.0;
+/// 1 world unit ≈ 1 meter: km/h → m/s.
+pub const KMH_TO_WORLD: f32 = 1.0 / 3.6;
 pub const CAR_HALF_EXTENTS: Vec3 = Vec3::new(1.1, 0.6, 2.2);
 
 // --- Gauge faces ---
