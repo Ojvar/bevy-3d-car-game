@@ -8,7 +8,11 @@
 //!   S / Down  — brake
 //!   L         — cycle headlights (off → short → long)
 //!   R         — restart after crash
+//!   N         — change driver after crash
 //!   Esc       — quit
+//!
+//! Each run asks for a driver name; scores are saved to
+//! `$XDG_DATA_HOME/bevy-card-rider/scores.tsv` (default `~/.local/share/...`).
 
 mod camera;
 mod car;

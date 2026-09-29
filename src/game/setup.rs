@@ -9,8 +9,8 @@ use crate::shared::constants::{
     ROAD_HALF_WIDTH, SEGMENT_LENGTH, SEGMENTS_AHEAD, SEGMENTS_BEHIND,
 };
 use crate::shared::resources::{RoadTracker, SharedMaterials, SharedMeshes};
-use crate::ui::{gauges, hud};
-use crate::world::{environment, road};
+use crate::ui::{gauges, hud, scoreboard};
+use crate::world::{billboards, environment, road};
 
 pub fn setup(
     mut commands: Commands,
@@ -20,6 +20,8 @@ pub fn setup(
     asset_server: Res<AssetServer>,
 ) {
     let (land, sky, hill) = environment::create_environment_materials(&mut materials);
+    let (billboard_face, billboard_frame, billboard_post) = billboards::billboard_meshes(&mut meshes);
+    let billboard_images = billboards::load_billboard_materials(&asset_server, &mut materials);
 
     let shared_meshes = SharedMeshes {
         road: meshes.add(Cuboid::new(ROAD_HALF_WIDTH * 2.0, 0.15, SEGMENT_LENGTH)),
@@ -29,6 +31,9 @@ pub fn setup(
         obstacle_cone: meshes.add(Cone::new(0.55, 1.4)),
         tree_trunk: meshes.add(Cylinder::new(0.25, 2.0)),
         tree_top: meshes.add(Cone::new(1.4, 2.8)),
+        billboard_face,
+        billboard_frame,
+        billboard_post,
     };
 
     let shared_materials = SharedMaterials {
@@ -67,6 +72,13 @@ pub fn setup(
         land,
         sky,
         hill,
+        billboard_frame: materials.add(StandardMaterial {
+            base_color: Color::srgb(0.32, 0.33, 0.36),
+            metallic: 0.6,
+            perceptual_roughness: 0.5,
+            ..default()
+        }),
+        billboard_images,
     };
 
     for i in -SEGMENTS_BEHIND..SEGMENTS_AHEAD {
@@ -102,6 +114,7 @@ pub fn setup(
 
     hud::spawn_hud(&mut commands);
     gauges::spawn_gauges(&mut commands);
+    scoreboard::spawn_scoreboard(&mut commands);
 
     commands.insert_resource(shared_meshes);
     commands.insert_resource(shared_materials);

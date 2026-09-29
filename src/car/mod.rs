@@ -12,22 +12,12 @@ use crate::shared::constants::{
     HEADLIGHT_LONG_AIM_Z, HEADLIGHT_LONG_INNER, HEADLIGHT_LONG_INTENSITY, HEADLIGHT_LONG_OUTER,
     HEADLIGHT_LONG_RANGE, HEADLIGHT_SHORT_AIM_Y, HEADLIGHT_SHORT_AIM_Z, HEADLIGHT_SHORT_INNER,
     HEADLIGHT_SHORT_INTENSITY, HEADLIGHT_SHORT_OUTER, HEADLIGHT_SHORT_RANGE, KMH_TO_WORLD,
-    ROAD_HALF_WIDTH,
+    ROAD_HALF_WIDTH, SCORE_REFERENCE_SPEED,
 };
 use crate::shared::resources::GameState;
 
-/// Mirrors Bevy's asset root lookup: `BEVY_ASSET_ROOT`, then `CARGO_MANIFEST_DIR`
-/// (set by `cargo run`), then the executable's folder.
 fn car_model_exists() -> bool {
-    let root = std::env::var_os("BEVY_ASSET_ROOT")
-        .or_else(|| std::env::var_os("CARGO_MANIFEST_DIR"))
-        .map(std::path::PathBuf::from)
-        .or_else(|| {
-            std::env::current_exe()
-                .ok()
-                .and_then(|exe| exe.parent().map(std::path::Path::to_path_buf))
-        });
-    root.is_some_and(|root| root.join("assets").join(CAR_MODEL_PATH).exists())
+    crate::shared::assets_dir().is_some_and(|assets| assets.join(CAR_MODEL_PATH).exists())
 }
 
 pub fn spawn_car(
@@ -397,7 +387,12 @@ pub fn drive_car(
     );
 
     let world_speed = car.speed * KMH_TO_WORLD;
-    transform.translation.z += world_speed * dt;
-    state.distance += world_speed * dt;
-    state.score = state.distance;
+    let travelled = world_speed * dt;
+    transform.translation.z += travelled;
+    state.distance += travelled;
+    state.score += travelled * score_multiplier(car.speed);
+}
+
+pub fn score_multiplier(speed_kmh: f32) -> f32 {
+    speed_kmh / SCORE_REFERENCE_SPEED
 }

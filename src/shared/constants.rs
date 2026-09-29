@@ -9,6 +9,20 @@ pub const SEGMENT_LENGTH: f32 = 24.0;
 pub const SEGMENTS_AHEAD: i32 = 8;
 pub const SEGMENTS_BEHIND: i32 = 2;
 
+// --- Billboards ---
+/// Folder (relative to `assets/`) scanned at startup for `.png` / `.jpg` / `.jpeg` images.
+pub const BILLBOARD_IMAGES_DIR: &str = "billboard-images";
+/// Chance that a road segment gets a billboard on one of its sides.
+pub const BILLBOARD_CHANCE: f64 = 0.25;
+pub const BILLBOARD_WIDTH: f32 = 8.0;
+pub const BILLBOARD_HEIGHT: f32 = 4.5;
+/// Height of the panel's bottom edge above the ground.
+pub const BILLBOARD_CLEARANCE: f32 = 3.0;
+/// Distance from the road edge to the billboard center (clear of the roadside trees).
+pub const BILLBOARD_ROAD_GAP: f32 = 11.0;
+/// Yaw toward the road so the panel faces oncoming drivers.
+pub const BILLBOARD_TILT: f32 = 0.35;
+
 // --- Car physics (speed values are km/h; convert with KMH_TO_WORLD for movement) ---
 pub const CAR_SPEED_MIN: f32 = 40.0;
 pub const CAR_SPEED_MAX: f32 = 285.0;
@@ -19,6 +33,15 @@ pub const CAR_STEER: f32 = 22.0;
 pub const KMH_TO_WORLD: f32 = 1.0 / 3.6;
 /// Matches the glTF car (~1.7 m wide, ~4.7 m long).
 pub const CAR_HALF_EXTENTS: Vec3 = Vec3::new(0.85, 0.6, 2.35);
+
+// --- Scoring ---
+/// Points per meter are multiplied by `speed / SCORE_REFERENCE_SPEED`, so driving fast pays more.
+pub const SCORE_REFERENCE_SPEED: f32 = CAR_SPEED_MIN;
+pub const PLAYER_NAME_MAX_LEN: usize = 16;
+/// Number of runs kept in the saved scores file.
+pub const SCOREBOARD_MAX_ENTRIES: usize = 100;
+/// Number of runs shown on the end-of-run leaderboard.
+pub const SCOREBOARD_SHOWN: usize = 10;
 
 // --- Car model (glTF, relative to the `assets/` folder) ---
 /// When this file is missing, the procedural box car is used instead.

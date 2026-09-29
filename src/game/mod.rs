@@ -1,14 +1,18 @@
 //! Root game plugin: resources, startup, and ordered update systems.
 
 mod input;
+pub mod scores;
 mod setup;
 
+use bevy::input::common_conditions::input_just_pressed;
 use bevy::prelude::*;
 
 use crate::camera;
 use crate::car;
-use crate::shared::resources::{DayNightCycle, GameState, ObstacleSpawner, RoadTracker};
-use crate::ui::{gauges, hud};
+use crate::shared::resources::{
+    DayNightCycle, GamePhase, GameState, ObstacleSpawner, PlayerName, RoadTracker, Scoreboard,
+};
+use crate::ui::{gauges, hud, name_entry, scoreboard};
 use crate::world::{environment, obstacles, road};
 
 /// Orders gameplay systems so driving runs before world / UI updates.
@@ -23,15 +27,28 @@ pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<GameState>()
+        let playing = in_state(GamePhase::Playing);
+
+        app.init_state::<GamePhase>()
+            .init_resource::<GameState>()
             .init_resource::<RoadTracker>()
             .init_resource::<ObstacleSpawner>()
             .init_resource::<DayNightCycle>()
+            .init_resource::<PlayerName>()
+            .insert_resource(Scoreboard::load())
             .configure_sets(
                 Update,
                 (GameSet::Drive, GameSet::World, GameSet::Ui).chain(),
             )
+            .configure_sets(Update, GameSet::Drive.run_if(playing.clone()))
             .add_systems(Startup, setup::setup)
+            .add_systems(OnEnter(GamePhase::NameEntry), name_entry::spawn_name_entry)
+            .add_systems(OnExit(GamePhase::NameEntry), name_entry::despawn_name_entry)
+            .add_systems(OnEnter(GamePhase::Playing), input::reset_run)
+            .add_systems(
+                Update,
+                name_entry::type_player_name.run_if(in_state(GamePhase::NameEntry)),
+            )
             .add_systems(
                 Update,
                 (
@@ -48,17 +65,28 @@ impl Plugin for GamePlugin {
                     environment::update_day_night,
                     environment::follow_environment.after(camera::follow_camera),
                     road::maintain_infinite_road,
-                    obstacles::spawn_obstacles,
                     obstacles::despawn_passed_obstacles,
-                    obstacles::check_collisions,
-                    input::restart_on_crash,
                     input::quit_on_escape,
+                    (
+                        obstacles::spawn_obstacles,
+                        obstacles::check_collisions,
+                        scores::record_score_on_crash.after(obstacles::check_collisions),
+                        input::reset_run.run_if(input_just_pressed(KeyCode::KeyR)),
+                        input::change_driver_on_crash,
+                    )
+                        .run_if(playing),
                 )
                     .in_set(GameSet::World),
             )
             .add_systems(
                 Update,
-                (hud::update_hud, gauges::update_gauges).in_set(GameSet::Ui),
+                (
+                    hud::update_hud,
+                    gauges::update_gauges,
+                    scoreboard::toggle_scoreboard,
+                    scoreboard::refresh_scoreboard,
+                )
+                    .in_set(GameSet::Ui),
             );
     }
 }

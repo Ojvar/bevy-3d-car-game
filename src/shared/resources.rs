@@ -2,11 +2,38 @@
 
 use bevy::prelude::*;
 
+/// Top-level flow: type a driver name first, then race.
+#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum GamePhase {
+    #[default]
+    NameEntry,
+    Playing,
+}
+
 #[derive(Resource, Default)]
 pub struct GameState {
     pub score: f32,
     pub crashed: bool,
     pub distance: f32,
+    /// Set once the finished run has been written to the scoreboard.
+    pub score_saved: bool,
+}
+
+#[derive(Resource, Default)]
+pub struct PlayerName(pub String);
+
+#[derive(Clone)]
+pub struct ScoreEntry {
+    pub name: String,
+    pub score: u32,
+}
+
+/// Saved runs sorted best-first; persisted by [`crate::game::scores`].
+#[derive(Resource, Default)]
+pub struct Scoreboard {
+    pub entries: Vec<ScoreEntry>,
+    /// Index of the most recent run in `entries`, if it made the list.
+    pub last_run: Option<usize>,
 }
 
 #[derive(Resource)]
@@ -48,6 +75,9 @@ pub struct SharedMeshes {
     pub obstacle_cone: Handle<Mesh>,
     pub tree_trunk: Handle<Mesh>,
     pub tree_top: Handle<Mesh>,
+    pub billboard_face: Handle<Mesh>,
+    pub billboard_frame: Handle<Mesh>,
+    pub billboard_post: Handle<Mesh>,
 }
 
 #[derive(Resource, Clone)]
@@ -62,6 +92,9 @@ pub struct SharedMaterials {
     pub land: Handle<StandardMaterial>,
     pub sky: Handle<StandardMaterial>,
     pub hill: Handle<StandardMaterial>,
+    pub billboard_frame: Handle<StandardMaterial>,
+    /// One material per image in `assets/billboard-images`; empty means no billboards.
+    pub billboard_images: Vec<Handle<StandardMaterial>>,
 }
 
 /// Advances through a full day/night loop every [`crate::shared::constants::DAY_NIGHT_PERIOD_SECS`].

@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 use rand::Rng;
 
+use super::billboards;
 use crate::shared::components::{Car, RoadSegment};
 use crate::shared::constants::{
     ROAD_HALF_WIDTH, SEGMENT_LENGTH, SEGMENTS_AHEAD, SEGMENTS_BEHIND,
@@ -83,6 +84,8 @@ pub fn spawn_road_segment(
             commands.entity(segment).add_child(top);
         }
     }
+
+    billboards::maybe_spawn_billboard(commands, meshes, materials, segment, &mut rng);
 }
 
 pub fn maintain_infinite_road(
