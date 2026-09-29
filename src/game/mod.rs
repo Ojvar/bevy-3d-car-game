@@ -2,6 +2,7 @@
 
 mod input;
 pub mod scores;
+pub mod settings;
 mod setup;
 
 use bevy::input::common_conditions::input_just_pressed;
@@ -10,8 +11,10 @@ use bevy::prelude::*;
 use crate::camera;
 use crate::car;
 use crate::shared::resources::{
-    DayNightCycle, GamePhase, GameState, ObstacleSpawner, PlayerName, RoadTracker, Scoreboard,
+    DayNightCycle, Difficulty, GamePhase, GameState, ObstacleSpawner, PlayerName, RoadTracker,
+    Scoreboard,
 };
+use crate::ui::settings as settings_ui;
 use crate::ui::{gauges, hud, name_entry, scoreboard};
 use crate::world::{environment, obstacles, road};
 
@@ -35,6 +38,7 @@ impl Plugin for GamePlugin {
             .init_resource::<ObstacleSpawner>()
             .init_resource::<DayNightCycle>()
             .init_resource::<PlayerName>()
+            .insert_resource(Difficulty::load())
             .insert_resource(Scoreboard::load())
             .configure_sets(
                 Update,
@@ -45,9 +49,27 @@ impl Plugin for GamePlugin {
             .add_systems(OnEnter(GamePhase::NameEntry), name_entry::spawn_name_entry)
             .add_systems(OnExit(GamePhase::NameEntry), name_entry::despawn_name_entry)
             .add_systems(OnEnter(GamePhase::Playing), input::reset_run)
+            .add_systems(OnEnter(GamePhase::Settings), settings_ui::spawn_settings)
+            .add_systems(
+                OnExit(GamePhase::Settings),
+                (settings_ui::despawn_settings, settings::save_settings),
+            )
             .add_systems(
                 Update,
-                name_entry::type_player_name.run_if(in_state(GamePhase::NameEntry)),
+                (
+                    name_entry::type_player_name,
+                    settings_ui::open_settings_on_click,
+                )
+                    .run_if(in_state(GamePhase::NameEntry)),
+            )
+            .add_systems(
+                Update,
+                (settings_ui::settings_keyboard, settings_ui::settings_clicks)
+                    .run_if(in_state(GamePhase::Settings)),
+            )
+            .add_systems(
+                Update,
+                settings_ui::style_menu_buttons.run_if(not(in_state(GamePhase::Playing))),
             )
             .add_systems(
                 Update,
@@ -66,7 +88,7 @@ impl Plugin for GamePlugin {
                     environment::follow_environment.after(camera::follow_camera),
                     road::maintain_infinite_road,
                     obstacles::despawn_passed_obstacles,
-                    input::quit_on_escape,
+                    input::quit_on_escape.run_if(not(in_state(GamePhase::Settings))),
                     (
                         obstacles::spawn_obstacles,
                         obstacles::check_collisions,

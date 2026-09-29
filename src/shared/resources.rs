@@ -3,11 +3,104 @@
 use bevy::prelude::*;
 
 /// Top-level flow: type a driver name first, then race.
+/// The settings menu is opened from (and returns to) name entry.
 #[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum GamePhase {
     #[default]
     NameEntry,
+    Settings,
     Playing,
+}
+
+/// Game level chosen in the settings menu; persisted by [`crate::game::settings`].
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Difficulty {
+    Easy,
+    #[default]
+    Medium,
+    Hard,
+}
+
+impl Difficulty {
+    pub const ALL: [Self; 3] = [Self::Easy, Self::Medium, Self::Hard];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Easy => "EASY",
+            Self::Medium => "MEDIUM",
+            Self::Hard => "HARD",
+        }
+    }
+
+    pub fn description(self) -> &'static str {
+        match self {
+            Self::Easy => "Fewer obstacles, gentle ramp-up.  Score x0.75",
+            Self::Medium => "Balanced traffic.  Score x1.0",
+            Self::Hard => "Dense obstacles, more double blocks.  Score x1.5",
+        }
+    }
+
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::Easy => "easy",
+            Self::Medium => "medium",
+            Self::Hard => "hard",
+        }
+    }
+
+    pub fn from_key(key: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|level| level.key() == key)
+    }
+
+    pub fn next(self) -> Self {
+        match self {
+            Self::Easy => Self::Medium,
+            Self::Medium | Self::Hard => Self::Hard,
+        }
+    }
+
+    pub fn prev(self) -> Self {
+        match self {
+            Self::Hard => Self::Medium,
+            Self::Medium | Self::Easy => Self::Easy,
+        }
+    }
+
+    /// Multiplies the distance between obstacle rows.
+    pub fn obstacle_gap_scale(self) -> f32 {
+        match self {
+            Self::Easy => 1.4,
+            Self::Medium => 1.0,
+            Self::Hard => 0.75,
+        }
+    }
+
+    /// Chance that an obstacle row blocks two lanes instead of one.
+    pub fn twin_chance(self) -> f64 {
+        match self {
+            Self::Easy => 0.1,
+            Self::Medium => 0.25,
+            Self::Hard => 0.4,
+        }
+    }
+
+    /// Upper bound on how much the obstacle gap shrinks as distance grows.
+    pub fn max_density_ramp(self) -> f32 {
+        match self {
+            Self::Easy => 0.2,
+            Self::Medium => 0.35,
+            Self::Hard => 0.45,
+        }
+    }
+
+    /// Keeps leaderboard scores comparable across levels.
+    pub fn score_scale(self) -> f32 {
+        match self {
+            Self::Easy => 0.75,
+            Self::Medium => 1.0,
+            Self::Hard => 1.5,
+        }
+    }
 }
 
 #[derive(Resource, Default)]

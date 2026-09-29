@@ -7,18 +7,10 @@ use bevy::prelude::*;
 use crate::shared::constants::SCOREBOARD_MAX_ENTRIES;
 use crate::shared::resources::{GameState, PlayerName, ScoreEntry, Scoreboard};
 
-const APP_DIR: &str = "bevy-card-rider";
 const SCORES_FILE: &str = "scores.tsv";
 
 fn scores_path() -> PathBuf {
-    let data_dir = std::env::var_os("XDG_DATA_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("APPDATA").map(PathBuf::from))
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")));
-    match data_dir {
-        Some(dir) => dir.join(APP_DIR).join(SCORES_FILE),
-        None => PathBuf::from(SCORES_FILE),
-    }
+    crate::shared::data_file(SCORES_FILE)
 }
 
 impl Scoreboard {

@@ -9,10 +9,11 @@
 //!   L         — cycle headlights (off → short → long)
 //!   R         — restart after crash
 //!   N         — change driver after crash
+//!   Tab       — open settings (game level) from the name screen
 //!   Esc       — quit
 //!
-//! Each run asks for a driver name; scores are saved to
-//! `$XDG_DATA_HOME/bevy-card-rider/scores.tsv` (default `~/.local/share/...`).
+//! Each run asks for a driver name; scores and settings are saved to
+//! `$XDG_DATA_HOME/bevy-card-rider/{scores.tsv,settings.txt}` (default `~/.local/share/...`).
 
 mod camera;
 mod car;

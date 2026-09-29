@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use crate::car::score_multiplier;
 use crate::shared::components::{Car, HudText};
-use crate::shared::resources::{GameState, PlayerName, Scoreboard};
+use crate::shared::resources::{Difficulty, GameState, PlayerName, Scoreboard};
 
 pub fn spawn_hud(commands: &mut Commands) {
     commands.spawn((
@@ -49,6 +49,7 @@ pub fn update_hud(
     state: Res<GameState>,
     player: Res<PlayerName>,
     board: Res<Scoreboard>,
+    difficulty: Res<Difficulty>,
     car_query: Query<&Car>,
     mut hud: Query<&mut Text, With<HudText>>,
 ) {
@@ -57,14 +58,15 @@ pub fn update_hud(
     };
     let (lights, bonus) = car_query
         .single()
-        .map(|car| (car.lights.label(), score_multiplier(car.speed)))
+        .map(|car| (car.lights.label(), score_multiplier(car.speed, *difficulty)))
         .unwrap_or(("OFF", 1.0));
+    let level = difficulty.label();
 
     let driver = if player.0.is_empty() { "—" } else { &player.0 };
     let best = board.best().unwrap_or(0).max(state.score.round() as u32);
 
     **text = format!(
-        "DRIVER  {driver}\nSCORE   {:.0}\nBEST    {best}\nBonus x{bonus:.1}   Lights {lights}",
+        "DRIVER  {driver}\nLEVEL   {level}\nSCORE   {:.0}\nBEST    {best}\nBonus x{bonus:.1}   Lights {lights}",
         state.score
     );
 }

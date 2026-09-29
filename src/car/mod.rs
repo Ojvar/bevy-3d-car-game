@@ -14,7 +14,7 @@ use crate::shared::constants::{
     HEADLIGHT_SHORT_INTENSITY, HEADLIGHT_SHORT_OUTER, HEADLIGHT_SHORT_RANGE, KMH_TO_WORLD,
     ROAD_HALF_WIDTH, SCORE_REFERENCE_SPEED,
 };
-use crate::shared::resources::GameState;
+use crate::shared::resources::{Difficulty, GameState};
 
 fn car_model_exists() -> bool {
     crate::shared::assets_dir().is_some_and(|assets| assets.join(CAR_MODEL_PATH).exists())
@@ -330,6 +330,7 @@ pub fn drive_car(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<GameState>,
+    difficulty: Res<Difficulty>,
     mut query: Query<(&mut Transform, &mut Car)>,
 ) {
     let Ok((mut transform, mut car)) = query.single_mut() else {
@@ -390,9 +391,9 @@ pub fn drive_car(
     let travelled = world_speed * dt;
     transform.translation.z += travelled;
     state.distance += travelled;
-    state.score += travelled * score_multiplier(car.speed);
+    state.score += travelled * score_multiplier(car.speed, *difficulty);
 }
 
-pub fn score_multiplier(speed_kmh: f32) -> f32 {
-    speed_kmh / SCORE_REFERENCE_SPEED
+pub fn score_multiplier(speed_kmh: f32, difficulty: Difficulty) -> f32 {
+    speed_kmh / SCORE_REFERENCE_SPEED * difficulty.score_scale()
 }

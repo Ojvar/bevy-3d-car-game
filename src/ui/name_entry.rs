@@ -5,7 +5,8 @@ use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::prelude::*;
 
 use crate::shared::constants::PLAYER_NAME_MAX_LEN;
-use crate::shared::resources::{GamePhase, PlayerName};
+use crate::shared::resources::{Difficulty, GamePhase, PlayerName};
+use crate::ui::settings::{OpenSettingsButton, menu_button};
 
 #[derive(Component)]
 pub struct NameEntryPanel;
@@ -13,7 +14,11 @@ pub struct NameEntryPanel;
 #[derive(Component)]
 pub struct NameInputText;
 
-pub fn spawn_name_entry(mut commands: Commands, player: Res<PlayerName>) {
+pub fn spawn_name_entry(
+    mut commands: Commands,
+    player: Res<PlayerName>,
+    difficulty: Res<Difficulty>,
+) {
     commands.spawn((
         NameEntryPanel,
         Node {
@@ -76,7 +81,25 @@ pub fn spawn_name_entry(mut commands: Commands, player: Res<PlayerName>) {
                     )],
                 ),
                 (
-                    Text::new("Enter  start     Backspace  delete     Esc  quit"),
+                    Node {
+                        column_gap: Val::Px(12.0),
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    children![
+                        (
+                            Text::new(format!("Level  {}", difficulty.label())),
+                            TextFont {
+                                font_size: FontSize::Px(18.0),
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.95, 0.75, 0.2)),
+                        ),
+                        (OpenSettingsButton, menu_button("SETTINGS", 16.0)),
+                    ],
+                ),
+                (
+                    Text::new("Enter  start     Tab  settings     Backspace  delete     Esc  quit"),
                     TextFont {
                         font_size: FontSize::Px(14.0),
                         ..default()
@@ -123,6 +146,9 @@ pub fn type_player_name(
                     player.0 = trimmed;
                     next_phase.set(GamePhase::Playing);
                 }
+            }
+            Key::Tab => {
+                next_phase.set(GamePhase::Settings);
             }
             Key::Backspace => {
                 edited |= player.0.pop().is_some();
