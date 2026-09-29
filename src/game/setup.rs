@@ -17,6 +17,7 @@ pub fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut road_tracker: ResMut<RoadTracker>,
+    asset_server: Res<AssetServer>,
 ) {
     let (land, sky, hill) = environment::create_environment_materials(&mut materials);
 
@@ -74,7 +75,7 @@ pub fn setup(
     road_tracker.oldest_segment = -SEGMENTS_BEHIND;
     road_tracker.next_segment = SEGMENTS_AHEAD;
 
-    car::spawn_car(&mut commands, &mut meshes, &mut materials);
+    car::spawn_car(&mut commands, &mut meshes, &mut materials, &asset_server);
 
     environment::spawn_environment(
         &mut commands,

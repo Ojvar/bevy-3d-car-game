@@ -2,9 +2,13 @@
 
 use bevy::prelude::*;
 
-use crate::shared::components::{Car, CarHeadlight, CarHeadlightLens, HeadlightMode};
+use crate::shared::components::{
+    Car, CarHeadlight, CarHeadlightLens, CarModel, CarModelLamp, HeadlightMode,
+};
 use crate::shared::constants::{
-    CAR_ACCEL, CAR_BRAKE, CAR_SPEED_MAX, CAR_SPEED_MIN, CAR_STEER, HEADLIGHT_LONG_AIM_Y,
+    CAR_ACCEL, CAR_BRAKE, CAR_MODEL_FRONT_Z, CAR_MODEL_HEADLIGHT_X, CAR_MODEL_LAMP_LONG,
+    CAR_MODEL_LAMP_SHORT, CAR_MODEL_OFFSET, CAR_MODEL_PATH, CAR_MODEL_SCALE, CAR_MODEL_YAW,
+    CAR_SPEED_MAX, CAR_SPEED_MIN, CAR_STEER, HEADLIGHT_LONG_AIM_Y,
     HEADLIGHT_LONG_AIM_Z, HEADLIGHT_LONG_INNER, HEADLIGHT_LONG_INTENSITY, HEADLIGHT_LONG_OUTER,
     HEADLIGHT_LONG_RANGE, HEADLIGHT_SHORT_AIM_Y, HEADLIGHT_SHORT_AIM_Z, HEADLIGHT_SHORT_INNER,
     HEADLIGHT_SHORT_INTENSITY, HEADLIGHT_SHORT_OUTER, HEADLIGHT_SHORT_RANGE, KMH_TO_WORLD,
@@ -12,11 +16,38 @@ use crate::shared::constants::{
 };
 use crate::shared::resources::GameState;
 
+/// Mirrors Bevy's asset root lookup: `BEVY_ASSET_ROOT`, then `CARGO_MANIFEST_DIR`
+/// (set by `cargo run`), then the executable's folder.
+fn car_model_exists() -> bool {
+    let root = std::env::var_os("BEVY_ASSET_ROOT")
+        .or_else(|| std::env::var_os("CARGO_MANIFEST_DIR"))
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            std::env::current_exe()
+                .ok()
+                .and_then(|exe| exe.parent().map(std::path::Path::to_path_buf))
+        });
+    root.is_some_and(|root| root.join("assets").join(CAR_MODEL_PATH).exists())
+}
+
 pub fn spawn_car(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
+    asset_server: &AssetServer,
 ) {
+    let use_model = car_model_exists();
+    if use_model {
+        info!("Using car model assets/{CAR_MODEL_PATH}");
+    } else {
+        info!("assets/{CAR_MODEL_PATH} not found; using the procedural car");
+    }
+    let body_visibility = if use_model {
+        Visibility::Hidden
+    } else {
+        Visibility::Inherited
+    };
+
     let body = meshes.add(Cuboid::new(2.0, 0.7, 4.0));
     let cabin = meshes.add(Cuboid::new(1.6, 0.65, 1.8));
     let wheel = meshes.add(Cylinder::new(0.4, 0.35));
@@ -65,53 +96,76 @@ pub fn spawn_car(
             },
             Transform::from_xyz(0.0, 0.55, 0.0),
             Visibility::default(),
-            children![
-                (
-                    Mesh3d(body),
-                    MeshMaterial3d(paint.clone()),
-                    Transform::from_xyz(0.0, 0.15, 0.0),
-                ),
-                (
-                    Mesh3d(cabin),
-                    MeshMaterial3d(glass),
-                    Transform::from_xyz(0.0, 0.75, -0.2),
-                ),
-                (
-                    Mesh3d(bumper.clone()),
-                    MeshMaterial3d(chrome.clone()),
-                    Transform::from_xyz(0.0, 0.05, 2.05),
-                ),
-                (
-                    Mesh3d(bumper),
-                    MeshMaterial3d(chrome),
-                    Transform::from_xyz(0.0, 0.05, -2.05),
-                ),
-                (
-                    Mesh3d(wheel.clone()),
-                    MeshMaterial3d(rubber.clone()),
-                    Transform::from_xyz(-1.05, -0.2, 1.2).with_rotation(wheel_rot),
-                ),
-                (
-                    Mesh3d(wheel.clone()),
-                    MeshMaterial3d(rubber.clone()),
-                    Transform::from_xyz(1.05, -0.2, 1.2).with_rotation(wheel_rot),
-                ),
-                (
-                    Mesh3d(wheel.clone()),
-                    MeshMaterial3d(rubber.clone()),
-                    Transform::from_xyz(-1.05, -0.2, -1.2).with_rotation(wheel_rot),
-                ),
-                (
-                    Mesh3d(wheel),
-                    MeshMaterial3d(rubber),
-                    Transform::from_xyz(1.05, -0.2, -1.2).with_rotation(wheel_rot),
-                ),
-            ],
+            children![(
+                Transform::default(),
+                body_visibility,
+                children![
+                    (
+                        Mesh3d(body),
+                        MeshMaterial3d(paint.clone()),
+                        Transform::from_xyz(0.0, 0.15, 0.0),
+                    ),
+                    (
+                        Mesh3d(cabin),
+                        MeshMaterial3d(glass),
+                        Transform::from_xyz(0.0, 0.75, -0.2),
+                    ),
+                    (
+                        Mesh3d(bumper.clone()),
+                        MeshMaterial3d(chrome.clone()),
+                        Transform::from_xyz(0.0, 0.05, 2.05),
+                    ),
+                    (
+                        Mesh3d(bumper),
+                        MeshMaterial3d(chrome),
+                        Transform::from_xyz(0.0, 0.05, -2.05),
+                    ),
+                    (
+                        Mesh3d(wheel.clone()),
+                        MeshMaterial3d(rubber.clone()),
+                        Transform::from_xyz(-1.05, -0.2, 1.2).with_rotation(wheel_rot),
+                    ),
+                    (
+                        Mesh3d(wheel.clone()),
+                        MeshMaterial3d(rubber.clone()),
+                        Transform::from_xyz(1.05, -0.2, 1.2).with_rotation(wheel_rot),
+                    ),
+                    (
+                        Mesh3d(wheel.clone()),
+                        MeshMaterial3d(rubber.clone()),
+                        Transform::from_xyz(-1.05, -0.2, -1.2).with_rotation(wheel_rot),
+                    ),
+                    (
+                        Mesh3d(wheel),
+                        MeshMaterial3d(rubber),
+                        Transform::from_xyz(1.05, -0.2, -1.2).with_rotation(wheel_rot),
+                    ),
+                ],
+            )],
         ))
         .id();
 
-    for x in [-0.7_f32, 0.7] {
-        let origin = Vec3::new(x, 0.2, 2.15);
+    if use_model {
+        let model = commands
+            .spawn((
+                CarModel,
+                WorldAssetRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset(CAR_MODEL_PATH))),
+                Transform::from_translation(CAR_MODEL_OFFSET)
+                    .with_rotation(Quat::from_rotation_y(CAR_MODEL_YAW))
+                    .with_scale(Vec3::splat(CAR_MODEL_SCALE)),
+            ))
+            .id();
+        commands.entity(car).add_child(model);
+    }
+
+    let (beam_x, beam_z) = if use_model {
+        (CAR_MODEL_HEADLIGHT_X, CAR_MODEL_FRONT_Z)
+    } else {
+        (0.7, 2.15)
+    };
+
+    for x in [-beam_x, beam_x] {
+        let origin = Vec3::new(x, 0.2, beam_z);
         let beam = commands
             .spawn((
                 CarHeadlight,
@@ -138,10 +192,63 @@ pub fn spawn_car(
                 Mesh3d(lens.clone()),
                 MeshMaterial3d(lens_mat.clone()),
                 Transform::from_xyz(x, 0.28, 2.2).with_scale(Vec3::new(1.0, 0.75, 0.55)),
+                // The glTF car has its own lamp glow, driven via CarModelLamp.
+                body_visibility,
             ))
             .id();
 
         commands.entity(car).add_children(&[beam, lens_entity]);
+    }
+}
+
+fn model_lamp_emissive(mode: HeadlightMode) -> LinearRgba {
+    let strength = match mode {
+        HeadlightMode::Off => 0.0,
+        HeadlightMode::Short => CAR_MODEL_LAMP_SHORT,
+        HeadlightMode::Long => CAR_MODEL_LAMP_LONG,
+    };
+    LinearRgba::rgb(strength, strength, strength)
+}
+
+/// Tags glTF car meshes that carry the baked lamp texture once the scene has spawned,
+/// and syncs their glow with the current headlight mode.
+pub fn tag_car_model_lamps(
+    mut commands: Commands,
+    added: Query<(Entity, &MeshMaterial3d<StandardMaterial>), Added<MeshMaterial3d<StandardMaterial>>>,
+    parents: Query<&ChildOf>,
+    models: Query<(), With<CarModel>>,
+    car_query: Query<&Car>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let Ok(car) = car_query.single() else {
+        return;
+    };
+
+    for (entity, mat_handle) in &added {
+        let mut current = entity;
+        let mut in_model = false;
+        while let Ok(child_of) = parents.get(current) {
+            current = child_of.parent();
+            if models.contains(current) {
+                in_model = true;
+                break;
+            }
+        }
+        if !in_model {
+            continue;
+        }
+
+        let has_lamps = materials
+            .get(&mat_handle.0)
+            .is_some_and(|mat| mat.emissive_texture.is_some());
+        if !has_lamps {
+            continue;
+        }
+
+        commands.entity(entity).insert(CarModelLamp);
+        if let Some(mut mat) = materials.get_mut(&mat_handle.0) {
+            mat.emissive = model_lamp_emissive(car.lights);
+        }
     }
 }
 
@@ -150,6 +257,7 @@ pub fn toggle_car_lights(
     mut car_query: Query<&mut Car>,
     mut beams: Query<(&mut SpotLight, &mut Transform), With<CarHeadlight>>,
     lenses: Query<&MeshMaterial3d<StandardMaterial>, With<CarHeadlightLens>>,
+    model_lamps: Query<&MeshMaterial3d<StandardMaterial>, With<CarModelLamp>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     if !keys.just_pressed(KeyCode::KeyL) {
@@ -162,6 +270,13 @@ pub fn toggle_car_lights(
 
     car.lights = car.lights.next();
     apply_headlight_mode(car.lights, &mut beams, &lenses, &mut materials);
+
+    let lamp_emissive = model_lamp_emissive(car.lights);
+    for mat_handle in &model_lamps {
+        if let Some(mut mat) = materials.get_mut(&mat_handle.0) {
+            mat.emissive = lamp_emissive;
+        }
+    }
 }
 
 fn apply_headlight_mode(

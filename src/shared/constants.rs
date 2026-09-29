@@ -17,7 +17,24 @@ pub const CAR_BRAKE: f32 = 90.0;
 pub const CAR_STEER: f32 = 22.0;
 /// 1 world unit ≈ 1 meter: km/h → m/s.
 pub const KMH_TO_WORLD: f32 = 1.0 / 3.6;
-pub const CAR_HALF_EXTENTS: Vec3 = Vec3::new(1.1, 0.6, 2.2);
+/// Matches the glTF car (~1.7 m wide, ~4.7 m long).
+pub const CAR_HALF_EXTENTS: Vec3 = Vec3::new(0.85, 0.6, 2.35);
+
+// --- Car model (glTF, relative to the `assets/` folder) ---
+/// When this file is missing, the procedural box car is used instead.
+pub const CAR_MODEL_PATH: &str = "models/car/scene.gltf";
+pub const CAR_MODEL_SCALE: f32 = 1.0;
+/// Yaw applied to the model so its front faces +Z (the driving direction).
+pub const CAR_MODEL_YAW: f32 = 0.0;
+/// Centers the model on the car root and puts its tires on the asphalt
+/// (car root sits 0.55 above the road; the model's origin is mid-body).
+pub const CAR_MODEL_OFFSET: Vec3 = Vec3::new(-0.09, 0.30, 0.377);
+/// Front face of the model in car space, where the headlight beams start.
+pub const CAR_MODEL_FRONT_Z: f32 = 2.3;
+pub const CAR_MODEL_HEADLIGHT_X: f32 = 0.62;
+/// Emissive strength of the model's baked head/tail lamp texture per mode.
+pub const CAR_MODEL_LAMP_SHORT: f32 = 2.0;
+pub const CAR_MODEL_LAMP_LONG: f32 = 4.0;
 
 // --- Headlights (short = low beam, long = high beam) ---
 pub const HEADLIGHT_SHORT_INTENSITY: f32 = 1_800_000.0;

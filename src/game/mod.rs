@@ -34,7 +34,12 @@ impl Plugin for GamePlugin {
             .add_systems(Startup, setup::setup)
             .add_systems(
                 Update,
-                (car::drive_car, car::toggle_car_lights).in_set(GameSet::Drive),
+                (
+                    car::drive_car,
+                    car::toggle_car_lights,
+                    car::tag_car_model_lamps,
+                )
+                    .in_set(GameSet::Drive),
             )
             .add_systems(
                 Update,

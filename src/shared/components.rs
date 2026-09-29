@@ -45,6 +45,14 @@ pub struct CarHeadlight;
 #[derive(Component)]
 pub struct CarHeadlightLens;
 
+/// Root of the loaded glTF car scene.
+#[derive(Component)]
+pub struct CarModel;
+
+/// Mesh inside the glTF car whose material carries the baked head/tail lamp glow.
+#[derive(Component)]
+pub struct CarModelLamp;
+
 #[derive(Component)]
 pub struct FollowCamera;
 
